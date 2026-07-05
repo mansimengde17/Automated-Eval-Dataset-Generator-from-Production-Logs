@@ -20,9 +20,9 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--bg); color: var(--text);
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  overflow-x: hidden; cursor: none;
+  overflow-x: hidden; overflow-y: auto; cursor: none;
 }
-#bg3d { position: fixed; inset: 0; z-index: 0; }
+#bg3d { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 /* custom cursor */
 #cursor { position: fixed; width: 26px; height: 26px; border-radius: 50%;
   border: 2px solid var(--accent); margin: -13px 0 0 -13px; z-index: 9999;
