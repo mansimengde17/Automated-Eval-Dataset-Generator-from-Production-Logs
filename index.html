@@ -185,22 +185,22 @@ canvas.sim { flex:1; min-height:0; width:100%; border-radius:10px;
       </div>
       <div class="tab-pane" id="tab-workflow">
         <div class="flow" id="flow">
-<div class="fstep"><div class="fi">01</div>
-<div class="fstep"><div class="fi">02</div>
-<div class="fstep"><div class="fi">03</div>
-<div class="fstep"><div class="fi">04</div>
-<div class="fstep"><div class="fi">05</div>
-<div class="fstep"><div class="fi">06</div>
+<div class="fstep"><div class="fi">01</div><b>Log tail</b><p>Production logs are pulled from cloud storage every night at the scheduled run time.</p></div>
+<div class="fstep"><div class="fi">02</div><b>Embed</b><p>Embeddings are computed for every request in the batch; previously seen prompts use cache.</p></div>
+<div class="fstep"><div class="fi">03</div><b>Cluster</b><p>HDBSCAN groups logs by topic; noise points are flagged as high value outlier candidates.</p></div>
+<div class="fstep"><div class="fi">04</div><b>Candidate select</b><p>Edge cases, failure signals, and retries are promoted to the labeling queue.</p></div>
+<div class="fstep"><div class="fi">05</div><b>Multi judge</b><p>Three judge runs score each candidate; a majority vote decides the label automatically.</p></div>
+<div class="fstep"><div class="fi">06</div><b>Dataset grow</b><p>High agreement cases are added immediately; disagreements go to the human review queue.</p></div>
         </div>
       </div>
       <div class="tab-pane" id="tab-depth">
         <div class="arch">
-<div class="step"><div class="n">1</div>
-<div class="step"><div class="n">2</div>
-<div class="step"><div class="n">3</div>
-<div class="step"><div class="n">4</div>
-<div class="step"><div class="n">5</div>
-<div class="step"><div class="n">6</div>
+<div class="step"><div class="n">1</div><div><b>Log ingestor</b><p>Tails cloud storage on a schedule; handles deduplication across previous pipeline nights.</p></div></div>
+<div class="step"><div class="n">2</div><div><b>Embedding pipeline</b><p>Batched embedding calls with a local cache to avoid re-embedding known prompts.</p></div></div>
+<div class="step"><div class="n">3</div><div><b>HDBSCAN clustering</b><p>Finds natural topic groups without a preset cluster count; noise points are outlier candidates.</p></div></div>
+<div class="step"><div class="n">4</div><div><b>Multi judge labeling</b><p>Three independent judge runs per candidate; majority vote auto labels with high confidence.</p></div></div>
+<div class="step"><div class="n">5</div><div><b>Human review queue</b><p>Low agreement cases route to a lightweight annotation interface for human resolution.</p></div></div>
+<div class="step"><div class="n">6</div><div><b>Cosine dedup and export</b><p>Near duplicates removed by cosine threshold; dataset versioned and exported to storage.</p></div></div>
         </div>
       </div>
       <div class="tab-pane" id="tab-code">
@@ -251,11 +251,7 @@ curl -s -X POST localhost:8000/v1/pipeline/run -d '{"sample_target": 200}'</pre>
       i = (i + 1) % (steps.length + 3);
       setTimeout(tick, i === 0 ? 900 : 520);
     }
-    var seen = false;
-    window.addEventListener('scroll', function () {
-      var r = flow.getBoundingClientRect();
-      if (!seen && r.top < window.innerHeight * 0.8) { seen = true; tick(); }
-    });
+    setTimeout(tick, 800);
   }
 })();
 </script>
@@ -282,7 +278,7 @@ curl -s -X POST localhost:8000/v1/pipeline/run -d '{"sample_target": 200}'</pre>
       s.appendChild(el('div', 'l', d[0])); row.appendChild(s);
       out[d[0]] = v; });
     stage.appendChild(row); return out; }
-  function mkcanvas(h) { var c = el('canvas', 'sim'); c.height = h || 340;
+  function mkcanvas() { var c = el('canvas', 'sim');
     stage.appendChild(c); return c; }
   // Draw a small human figure at (x,y). scale ~ body height.
   function human(ctx, x, y, s, color, wave) {
@@ -319,7 +315,7 @@ curl -s -X POST localhost:8000/v1/pipeline/run -d '{"sample_target": 200}'</pre>
 
   // Eval dataset generator: production logs stream in, cluster by topic,
   // outliers get flagged, and labeled test cases accumulate.
-  var cv = mkcanvas(340); var ctx = cv.getContext('2d');
+  var cv = mkcanvas(); var ctx = cv.getContext('2d');
   var S = stats([['logs mined', '0'], ['clusters', '0'],
                  ['outliers', '0'], ['test cases', '0']]);
   var box = el('div', 'log'); stage.appendChild(box);
@@ -333,10 +329,12 @@ curl -s -X POST localhost:8000/v1/pipeline/run -d '{"sample_target": 200}'</pre>
     'data retention policy','download invoice','rotate api keys',
     'add a teammate','where is my data stored'];
   function draw() {
-    var w = cv.clientWidth; cv.width=w*(window.devicePixelRatio>1?2:1);
-    ctx.setTransform(window.devicePixelRatio>1?2:1,0,0,
-      window.devicePixelRatio>1?2:1,0,0);
-    ctx.clearRect(0,0,w,H);
+    var w = cv.clientWidth, H = cv.clientHeight || 340;
+    if (w < 10) return;
+    var dpr = window.devicePixelRatio > 1 ? 2 : 1;
+    cv.width = w * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, H);
     // source
     ctx.fillStyle=hexToRgba(ACCENT,.12); ctx.strokeStyle=ACCENT;
     roundRect(ctx, 8, H*0.5-40, 60, 80, 8); ctx.fill(); ctx.stroke();
@@ -399,7 +397,7 @@ curl -s -X POST localhost:8000/v1/pipeline/run -d '{"sample_target": 200}'</pre>
   btn('Run nightly pipeline', function(){ start();
     logLine(box,'dim','sampling production logs, clustering by topic, flagging outliers'); });
   btn('Pause', function(){ running=false; clearInterval(timer); });
-  start();
+  requestAnimationFrame(function(){ start(); });
 
 })();
 </script>
