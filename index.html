@@ -20,18 +20,7 @@ html { scroll-behavior: smooth; overflow-y: scroll; overflow-x: hidden; }
 body {
   background: var(--bg); color: var(--text);
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  overflow-x: visible; cursor: none;
 }
-#bg3d { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-/* custom cursor */
-#cursor { position: fixed; width: 26px; height: 26px; border-radius: 50%;
-  border: 2px solid var(--accent); margin: -13px 0 0 -13px; z-index: 9999;
-  pointer-events: none; transition: transform .12s ease, opacity .3s;
-  mix-blend-mode: screen; }
-#cursor::after { content: ''; position: absolute; inset: 9px;
-  border-radius: 50%; background: var(--accent2); }
-#cursor.tap { transform: scale(1.9); }
-a, button { cursor: none; }
 .wrap { position: relative; z-index: 1; max-width: 1060px;
         margin: 0 auto; padding: 0 24px; }
 nav { display: flex; justify-content: space-between; align-items: center;
@@ -129,14 +118,29 @@ canvas.sim { width: 100%; border-radius: 12px; display: block;
 footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px;
          border-top: 1px solid var(--line); margin-top: 40px; }
 footer a { color: var(--accent); text-decoration: none; }
-@media (max-width: 720px) { .why { grid-template-columns: 1fr; }
-  body { cursor: auto; } #cursor { display: none; }
-  a, button { cursor: auto; } }
+@media (max-width: 720px) { .why { grid-template-columns: 1fr; } }
+
+/* animated CSS background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(77,208,225,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(91,140,255,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 90%, rgba(143,107,255,0.07) 0%, transparent 45%);
+  animation: bgPulse 9s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes bgPulse {
+  0%  { opacity: 0.55; transform: scale(1); }
+  100%{ opacity: 1;    transform: scale(1.06); }
+}
 </style>
 </head>
 <body>
-<canvas id="bg3d"></canvas>
-<div id="cursor"></div>
+
 <div class="wrap">
 <nav>
   <div class="brand">Mansi Mengde / AI Engineering</div>
@@ -228,102 +232,6 @@ curl -s -X POST localhost:8000/v1/pipeline/run -d '{"sample_target": 200}'</pre>
 </footer>
 </div>
 
-<script src="three.min.js"></script>
-<script>
-if (typeof THREE === 'undefined') {
-  document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/'
-    + 'three.js/r128/three.min.js"><\/scr' + 'ipt>');
-}
-</script>
-<script>
-(function () {
-  var cur = document.getElementById('cursor');
-  window.addEventListener('mousemove', function (e) {
-    cur.style.left = e.clientX + 'px'; cur.style.top = e.clientY + 'px';
-  });
-  window.addEventListener('mousedown', function () {
-    cur.classList.add('tap'); });
-  window.addEventListener('mouseup', function () {
-    cur.classList.remove('tap'); });
-  document.addEventListener('mouseover', function (e) {
-    if (e.target.closest('a, button')) cur.style.borderColor = '#5b8cff';
-    else cur.style.borderColor = '#c17bff';
-  });
-})();
-</script>
-<script>
-(function () {
-  var canvas = document.getElementById('bg3d');
-  var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true,
-    antialias: true });
-  var scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x05060f, 0.028);
-  var camera = new THREE.PerspectiveCamera(62, 1, 0.1, 200);
-  camera.position.set(0, 0, 26);
-  var accent = new THREE.Color('#c17bff');
-  var accent2 = new THREE.Color('#5b8cff');
-  var N = 900, positions = new Float32Array(N * 3),
-      colors = new Float32Array(N * 3);
-  for (var i = 0; i < N; i++) {
-    positions[3*i] = (Math.random() - 0.5) * 90;
-    positions[3*i+1] = (Math.random() - 0.5) * 55;
-    positions[3*i+2] = (Math.random() - 0.5) * 60 - 8;
-    var c = Math.random() < 0.5 ? accent : accent2;
-    colors[3*i] = c.r; colors[3*i+1] = c.g; colors[3*i+2] = c.b;
-  }
-  var geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  var points = new THREE.Points(geo, new THREE.PointsMaterial({
-    size: 0.16, vertexColors: true, transparent: true, opacity: 0.85 }));
-  scene.add(points);
-  var heroGroup = new THREE.Group();
-  
-  for (var k = 0; k < 3; k++) {
-    var shell = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(4 + k * 2.1, 1),
-      new THREE.MeshStandardMaterial({ color: 0x0d1024,
-        emissive: (k % 2 ? accent2 : accent).getHex(),
-        emissiveIntensity: 0.28 - k * 0.06, wireframe: true }));
-    heroGroup.add(shell);
-  }
-  scene.add(heroGroup);
-  var l1 = new THREE.PointLight(accent.getHex(), 1.4, 120);
-  l1.position.set(18, 12, 20);
-  var l2 = new THREE.PointLight(accent2.getHex(), 1.1, 120);
-  l2.position.set(-16, -10, 14);
-  scene.add(l1, l2, new THREE.AmbientLight(0x30355c, 0.7));
-  var mouseX = 0, mouseY = 0;
-  window.addEventListener('mousemove', function (e) {
-    mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-    mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
-  });
-  function resize() {
-    var w = window.innerWidth, h = window.innerHeight;
-    renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    camera.aspect = w / h; camera.updateProjectionMatrix();
-  }
-  window.addEventListener('resize', resize); resize();
-  var t = 0;
-  (function animate() {
-    requestAnimationFrame(animate);
-    t += 0.005;
-    points.rotation.y = t * 0.35;
-    points.rotation.x = Math.sin(t * 0.4) * 0.08;
-    heroGroup.rotation.y += 0.004;
-    heroGroup.rotation.x = Math.sin(t * 0.7) * 0.22;
-    heroGroup.position.y = Math.sin(t * 1.1) * 0.9;
-    camera.position.x += (mouseX * 3.2 - camera.position.x) * 0.04;
-    camera.position.y += (-mouseY * 2.2 - camera.position.y) * 0.04;
-    camera.lookAt(0, 0, 0);
-    var scroll = Math.min(window.scrollY / window.innerHeight, 2.2);
-    heroGroup.position.z = -scroll * 9;
-    points.material.opacity = Math.max(0.25, 0.85 - scroll * 0.28);
-    renderer.render(scene, camera);
-  })();
-})();
-</script>
 <script>
 (function () {
   // Workflow strip: light each step in sequence on scroll into view.
@@ -490,3 +398,4 @@ if (typeof THREE === 'undefined') {
 </script>
 </body>
 </html>
+
